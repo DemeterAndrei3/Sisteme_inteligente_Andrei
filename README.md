@@ -1,6 +1,6 @@
 # Sisteme_inteligente_Andrei
 
-# Stație meteorologică
+# Predictia vremii folosind modele inteligente secventiale (Predictii meteorologice)
 
 ## Descriere generală
 Proiectul își propune realizarea unei stații meteorologice care colectează și analizează date despre condițiile meteo locale. Scopul este să monitorizăm parametri precum temperatura, umiditatea, presiunea atmosferică și, eventual, viteza vântului, pe o perioadă de timp.
