@@ -25,3 +25,4 @@ Fișierul de date va fi încărcat în acest repository, în folderul `data/`, s
 - Afișarea datelor în timp real într-o interfață grafică sau pe un dashboard web.
 - Calcularea unor statistici (medie, minim, maxim pe zi/săptămână).
 - Compararea datelor locale cu date de la o sursă meteo online.
+Informatii: preluate de la Copilot
