@@ -1,0 +1,114 @@
+1. Viziune generală
+Tema: Predicția vremii folosind modele inteligente secvențiale (predicții meteorologice).
+Obiectiv tehnic:
+
+*Minim 3 algoritmi pentru predicție de serie temporală (vreme).
+
+*Optimizare de hiperparametri pentru fiecare.
+
+*Compararea modelelor pe aceleași date și aceleași metrici.
+
+*Commit în GitHub cu codul final și rezultatele brute (fișiere CSV/grafice).
+
+Set de modele recomandat (clar, echilibrat):
+
+   1. SARIMA – model statistic secvențial (baseline interpretabil).
+
+   2. LSTM – rețea neuronală recurentă pentru serii temporale.
+
+   3. Transformer simplificat (sau TCN/GRU dacă vrei ceva mai ușor) – model secvențial modern.
+
+2. Date și preprocesare
+2.1. Ce date folosești
+  *Date meteo (de ex. temperatură, umiditate, presiune, etc.) pe timp (oră/zi).
+
+  *Important: să ai o coloană de tip timp (timestamp) și una sau mai multe variabile țintă (ex: temperatura).
+////////////////////////////////////////////////////////////////
+3. Modelul 1 – SARIMA (baseline statistic)
+3.1. Ideea
+   *SARIMA (Seasonal ARIMA) modelează dependențele autoregresive, diferențierea și media mobilă, plus sezonalitate.
+
+   *Bun ca baseline: ușor de interpretat, rapid de antrenat.
+3.2. Hiperparametri
+# Label: Hiperparametri SARIMA:
+   *𝑝, 𝑑, 𝑞 – componentele AR, diferențiere, MA.
+
+   *𝑃, 𝐷 ,𝑄, 𝑠 – componentele sezoniere și perioada sezonului (ex: 24 pentru orar, 7 pentru zilnic).
+///////////////////////////////////////////////////////////
+
+II. Optimizarea hiperparametrilor – strategie comună
+II.1. De ce e importantă
+    *Hiperparametrii controlează capacitatea modelului, viteza de învățare și regularizarea.
+
+    *Fără tuning, compararea modelelor nu e corectă.
+
+II.2. Strategia generală
+1. Împarte datele în:
+
+   *Train – pentru antrenare.
+
+   *Validation – pentru tuning.
+
+   *Test – pentru evaluarea finală.
+
+2. Alege o metodă de tuning:
+
+# Label: Metode:
+
+    *Grid Search – exhaustiv, dar scump.
+
+    *Random Search – mai eficient pentru spații mari.
+
+    *Optuna – optimizare bayesiană (TPE), cu pruning.
+
+3.Definește o funcție obiectiv:
+
+     *Input: set de hiperparametri.
+
+     *Output: scor (ex: RMSE pe validation).
+
+     *Algoritmul de tuning încearcă să minimizeze scorul.
+
+4. Număr de încercări (trials):
+
+     *30–50 pentru început, mai multe dacă ai timp.
+
+??????????????????????????????????????????
+
+III. Compararea modelelor
+III.1. Metrici
+# Label: Metrici folosite:
+
+   *MAE (Mean Absolute Error) – eroare medie absolută.
+
+   *RMSE (Root Mean Squared Error) – penalizează mai mult erorile mari.
+
+   *MAPE (Mean Absolute Percentage Error) – procentuală (atenție la valori aproape de 0).
+
+III.2. Procedură de comparare
+  1. Antrenezi fiecare model cu hiperparametrii optimizați.
+
+  2. Evaluezi pe același set de test (aceleași date, aceleași ferestre).
+
+  3. Calculezi MAE, RMSE, MAPE pentru fiecare.
+
+  4. Prezinți într-un tabel:
+
+    *Label: Exemplu tabel:
+
+  5. Grafice:
+
+    *Plot cu seria reală vs. predicțiile fiecărui model.
+
+    *Plot cu eroarea în timp (opțional).
+
+7.3. Interpretare
+# Discuți:
+
+    *Care model are cea mai mică eroare?
+
+    *Cum se comportă pe orizont scurt vs. lung?
+
+    *Ce pattern‑uri pare să prindă mai bine (sezonalitate, trend)?
+
+    *Limitări (date puține, zgomot, etc.).
