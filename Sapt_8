@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+_______________________________________________________________________________________________________________________________________________
+
 1. Viziune generală
 Tema: Predicția vremii folosind modele inteligente secvențiale (predicții meteorologice).
 Obiectiv tehnic:
@@ -24,6 +36,7 @@ Set de modele recomandat (clar, echilibrat):
 
   *Important: să ai o coloană de tip timp (timestamp) și una sau mai multe variabile țintă (ex: temperatura).
 ////////////////////////////////////////////////////////////////
+
 3. Modelul 1 – SARIMA (baseline statistic)
 3.1. Ideea
    *SARIMA (Seasonal ARIMA) modelează dependențele autoregresive, diferențierea și media mobilă, plus sezonalitate.
@@ -34,6 +47,94 @@ Set de modele recomandat (clar, echilibrat):
    *𝑝, 𝑑, 𝑞 – componentele AR, diferențiere, MA.
 
    *𝑃, 𝐷 ,𝑄, 𝑠 – componentele sezoniere și perioada sezonului (ex: 24 pentru orar, 7 pentru zilnic).
+
+/////////////////////////////////////////
+3.3. Optimizare hiperparametri (Grid Search simplu)
+# Alegi un grid mic, de ex:
+
+ * Label: Grid:
+
+    *𝑝 ϵ {0, 1, 2}
+    *d ϵ {0, 1}
+    *q ϵ {0, 1, 2}
+    *P ϵ {0, 1}
+    *D ϵ {0, 1}
+    *Q ϵ {0, 1}
+    *𝑠 = 24 sau 7 (în funcție de frecvență)
+
+# Pentru fiecare combinație:
+
+    *Antrenezi pe setul de train.
+
+    *Calculezi o metrică (ex: AIC sau direct RMSE pe validation).
+
+    *Alegi combinația cu scorul cel mai bun.
+3.4. Antrenare și predicție
+# Label: Antrenare:
+
+    *Antrenezi modelul SARIMA pe train.
+
+# Label: Predicție:
+
+    *Prezi pe setul de test (rolling sau direct, în funcție de setup).
+
+# Calculezi MAE, RMSE, MAPE.
+????????????????????/////////////////////////////
+
+4. Modelul 2 – LSTM (model secvențial neuronal)
+4.1. Ideea
+# LSTM (Long Short-Term Memory) este o rețea recurentă care poate învăța dependențe pe termen mediu/lung în serii temporale.
+
+# Potrivit pentru predicții meteorologice, unde există sezonalitate și pattern‑uri complexe.
+
+4.2. Arhitectură
+# Label: Arhitectură LSTM:
+
+    *Input: secvență de lungime seq_len (ex: ultimele 24 ore).
+
+    *1–2 straturi LSTM cu units neuroni (ex: 64).
+
+    *Dropout pentru regularizare.
+
+    *Fully connected (Dense) la final pentru a produce predicția (scalar sau vector).
+
+4.3. Hiperparametri
+# Label: Hiperparametri LSTM:
+
+   *num_layers – 1–2.
+
+   *units – 32, 64, 128.
+
+   *learning_rate – între 10^(-4)  si 10^(-2) .
+
+   *batch_size – 32 sau 64.
+
+   *dropout – 0–0.5.
+
+   *seq_len – 24, 48, 72 (în funcție de date).
+
+4.4. Optimizare hiperparametri
+Poți folosi:
+
+Grid Search (pe un grid mic) sau
+
+Random Search (alegi aleator combinații) sau
+
+Optuna (Bayesian/TPE – mai eficient).
+
+Label: Procedură tuning:
+
+Împarți datele în train/validation/test (în timp, fără shuffle).
+
+Pentru fiecare set de hiperparametri:
+
+Antrenezi modelul pe train.
+
+Evaluezi pe validation (RMSE).
+
+Alegi configurația cu RMSE minim pe validation.
+
+Reantrenezi modelul final pe train+validation și testezi pe test.
 ///////////////////////////////////////////////////////////
 
 II. Optimizarea hiperparametrilor – strategie comună
@@ -112,3 +213,23 @@ III.2. Procedură de comparare
     *Ce pattern‑uri pare să prindă mai bine (sezonalitate, trend)?
 
     *Limitări (date puține, zgomot, etc.).
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+Bibliografie: 
+Box, G. E. P., Jenkins, G. M., Reinsel, G. C. Time Series Analysis: Forecasting and Control.
+
+Hochreiter, S., Schmidhuber, J. „Long Short-Term Memory”, Neural Computation, 1997.
+
+Goodfellow, I., Bengio, Y., Courville, A. Deep Learning. MIT Press.
+
+Articole comparative ARIMA vs. LSTM pentru predicția vremii / seriilor temporale.
+
+Lucrări despre Transformer/attention pentru time series forecasting.
+
+Documentația oficială a bibliotecilor folosite (TensorFlow/PyTorch, statsmodels, Optuna).
+
+Articole/tutoriale despre metrici de evaluare (MAE, RMSE, MAPE) în forecasting.
+
+Resurse despre hyperparameter tuning (Grid Search, Random Search, Bayesian Optimization).
+
+https://copilot.microsoft.com/chats/u3nTTDJYWgHViy4dmC5ok
