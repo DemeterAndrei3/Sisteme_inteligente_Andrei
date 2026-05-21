@@ -1,3 +1,8 @@
+# Inteligenta artificiala si prognoza precisa
+Proiectul isi propune realizarea
+
+
+////////////////////////////////////////////////////////////
 # Sisteme_inteligente_Andrei
 
 # Predictia vremii folosind modele inteligente secventiale (Predictii meteorologice)
