@@ -1,0 +1,237 @@
+# weather_forecasting_seq_models.py
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from math import sqrt
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import (
+    Dense, LSTM, GRU, Dropout, Input, LayerNormalization,
+    MultiHeadAttention
+)
+from tensorflow.keras.optimizers import Adam
+
+# =========================
+# 1. Încărcare și pregătire date
+# =========================
+
+# Înlocuiește cu calea ta reală
+DATA_PATH = "weather.csv"
+
+df = pd.read_csv(DATA_PATH)
+
+# Exemplu de coloane așteptate – adaptează la datasetul tău
+# date, temp, humidity, pressure, wind_speed, precipitation
+# Verifică primele rânduri
+print(df.head())
+
+# Conversie coloană dată (dacă există)
+if 'date' in df.columns:
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values('date')
+    df.set_index('date', inplace=True)
+
+# Selectăm caracteristicile relevante
+features = ['temp', 'humidity', 'pressure', 'wind_speed', 'precipitation']
+df = df[features].dropna()
+
+# =========================
+# 2. Analiză exploratorie simplă
+# =========================
+
+print(df.describe())
+
+plt.figure(figsize=(10, 4))
+df['temp'].plot(title='Temperatura în timp')
+plt.xlabel('Timp')
+plt.ylabel('Temperatură')
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+plt.title('Matricea de corelație')
+plt.tight_layout()
+plt.show()
+
+# =========================
+# 3. Normalizare și generare ferestre secvențiale
+# =========================
+
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(df.values)
+
+SEQ_LEN = 14  # fereastră de 14 zile
+TARGET_COL = 0  # indexul coloanei 'temp' în features
+
+def create_sequences(data, seq_len, target_col):
+    X, y = [], []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+        y.append(data[i+seq_len, target_col])
+    return np.array(X), np.array(y)
+
+X, y = create_sequences(scaled_data, SEQ_LEN, TARGET_COL)
+print("Shape X:", X.shape, "Shape y:", y.shape)
+
+# Împărțire train/val/test (70/15/15)
+n = len(X)
+train_end = int(0.7 * n)
+val_end = int(0.85 * n)
+
+X_train, y_train = X[:train_end], y[:train_end]
+X_val, y_val = X[train_end:val_end], y[train_end:val_end]
+X_test, y_test = X[val_end:], y[val_end:]
+
+print("Train:", X_train.shape, "Val:", X_val.shape, "Test:", X_test.shape)
+
+# =========================
+# 4. Funcții de evaluare
+# =========================
+
+def evaluate_model(model, X, y, name="Model"):
+    preds = model.predict(X)
+    rmse = sqrt(mean_squared_error(y, preds))
+    mae = mean_absolute_error(y, preds)
+    mape = np.mean(np.abs((y - preds) / (y + 1e-8))) * 100
+    print(f"{name} -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, MAPE: {mape:.2f}%")
+    return preds, rmse, mae, mape
+
+# =========================
+# 5. Model LSTM
+# =========================
+
+def build_lstm_model(input_shape):
+    model = Sequential()
+    model.add(LSTM(64, return_sequences=True, input_shape=input_shape))
+    model.add(Dropout(0.2))
+    model.add(LSTM(32))
+    model.add(Dropout(0.2))
+    model.add(Dense(1))
+    model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
+    return model
+
+lstm_model = build_lstm_model((SEQ_LEN, X.shape[2]))
+lstm_history = lstm_model.fit(
+    X_train, y_train,
+    validation_data=(X_val, y_val),
+    epochs=30,
+    batch_size=32,
+    verbose=1
+)
+
+lstm_preds, lstm_rmse, lstm_mae, lstm_mape = evaluate_model(
+    lstm_model, X_test, y_test, name="LSTM"
+)
+
+# =========================
+# 6. Model GRU
+# =========================
+
+def build_gru_model(input_shape):
+    model = Sequential()
+    model.add(GRU(64, return_sequences=True, input_shape=input_shape))
+    model.add(Dropout(0.2))
+    model.add(GRU(32))
+    model.add(Dropout(0.2))
+    model.add(Dense(1))
+    model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
+    return model
+
+gru_model = build_gru_model((SEQ_LEN, X.shape[2]))
+gru_history = gru_model.fit(
+    X_train, y_train,
+    validation_data=(X_val, y_val),
+    epochs=30,
+    batch_size=32,
+    verbose=1
+)
+
+gru_preds, gru_rmse, gru_mae, gru_mape = evaluate_model(
+    gru_model, X_test, y_test, name="GRU"
+)
+
+# =========================
+# 7. Model Transformer simplificat
+# =========================
+
+class PositionalEncoding(tf.keras.layers.Layer):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pos = np.arange(max_len)[:, np.newaxis]
+        i = np.arange(d_model)[np.newaxis, :]
+        angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
+        angle_rads = pos * angle_rates
+        sines = np.sin(angle_rads[:, 0::2])
+        cosines = np.cos(angle_rads[:, 1::2])
+        pe = np.zeros((max_len, d_model))
+        pe[:, 0::2] = sines
+        pe[:, 1::2] = cosines
+        self.pos_encoding = tf.cast(pe[np.newaxis, ...], dtype=tf.float32)
+
+    def call(self, x):
+        seq_len = tf.shape(x)[1]
+        return x + self.pos_encoding[:, :seq_len, :]
+
+def build_transformer_model(seq_len, num_features, d_model=64, num_heads=4, ff_dim=128):
+    inputs = Input(shape=(seq_len, num_features))
+    x = Dense(d_model)(inputs)
+    x = PositionalEncoding(d_model)(x)
+
+    attn_output = MultiHeadAttention(num_heads=num_heads, key_dim=d_model)(x, x)
+    x = tf.keras.layers.Add()([x, attn_output])
+    x = LayerNormalization(epsilon=1e-6)(x)
+
+    ff = Sequential([
+        Dense(ff_dim, activation='relu'),
+        Dense(d_model),
+    ])
+    ff_output = ff(x)
+    x = tf.keras.layers.Add()([x, ff_output])
+    x = LayerNormalization(epsilon=1e-6)(x)
+
+    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    outputs = Dense(1)(x)
+
+    model = Model(inputs=inputs, outputs=outputs)
+    model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
+    return model
+
+transformer_model = build_transformer_model(SEQ_LEN, X.shape[2])
+transformer_history = transformer_model.fit(
+    X_train, y_train,
+    validation_data=(X_val, y_val),
+    epochs=30,
+    batch_size=32,
+    verbose=1
+)
+
+transformer_preds, tr_rmse, tr_mae, tr_mape = evaluate_model(
+    transformer_model, X_test, y_test, name="Transformer"
+)
+
+# =========================
+# 8. Compararea modelelor și vizualizare
+# =========================
+
+print("\nRezumat performanțe:")
+print(f"LSTM       -> RMSE: {lstm_rmse:.4f}, MAE: {lstm_mae:.4f}, MAPE: {lstm_mape:.2f}%")
+print(f"GRU        -> RMSE: {gru_rmse:.4f}, MAE: {gru_mae:.4f}, MAPE: {gru_mape:.2f}%")
+print(f"Transformer-> RMSE: {tr_rmse:.4f}, MAE: {tr_mae:.4f}, MAPE: {tr_mape:.2f}%")
+
+plt.figure(figsize=(10, 5))
+plt.plot(y_test, label='Real', alpha=0.7)
+plt.plot(lstm_preds, label='LSTM', alpha=0.7)
+plt.plot(gru_preds, label='GRU', alpha=0.7)
+plt.plot(transformer_preds, label='Transformer', alpha=0.7)
+plt.title('Compararea predicțiilor pe setul de test')
+plt.xlabel('Timp (index)')
+plt.ylabel('Temperatură (normalizată)')
+plt.legend()
+plt.tight_layout()
+plt.show()
